@@ -318,19 +318,13 @@ html, body {
 
         提升清晰度的关键：使用 BrowserContext 的 device_scale_factor (DPR)。
         """
-        temp_html_path = None
         context = None
         try:
             temp_dir = tempfile.gettempdir()
-            temp_html_path = os.path.join(
+            output_path = os.path.join(
                 temp_dir,
-                f"ripan_daily_{os.getpid()}_{hash(html_content) % 100000}.html",
+                f"ripan_daily_{os.getpid()}_{hash(html_content) % 100000}.png",
             )
-            with open(temp_html_path, "w", encoding="utf-8") as f:
-                f.write(html_content)
-
-            if output_path is None:
-                output_path = temp_html_path.replace(".html", ".png")
 
             # DPR (device scale factor): 越大越清晰，但图片更大、渲染更慢
             dpr = int(self.config.get("render_dpr", 4))
@@ -349,8 +343,7 @@ html, body {
                     )
                     page = await context.new_page()
 
-                    file_url = f"file://{pathname2url(temp_html_path)}"
-                    await page.goto(file_url, wait_until="networkidle")
+                    await page.set_content(html_content, wait_until="networkidle")
                     await page.wait_for_timeout(2000)
 
                     wrapper = await page.query_selector(".wrapper")
@@ -406,12 +399,6 @@ html, body {
         except Exception as e:
             logger.error(f"Playwright渲染失败: {e}", exc_info=True)
             raise
-        finally:
-            if temp_html_path and os.path.exists(temp_html_path):
-                try:
-                    os.remove(temp_html_path)
-                except Exception as e:
-                    logger.warning(f"删除临时HTML文件失败: {e}")
 
     async def _scheduled_push_task(self):
         while True:
